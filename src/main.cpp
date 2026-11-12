@@ -1,4 +1,7 @@
-// cachesim --size 32K --ways 8 --line 64 --policy lru|srrip|brrip <trace>
+// cachesim [--size 32K --ways 8 --line 64 --policy lru|srrip|brrip]
+//          [--l2-size 256K --l2-ways 8] [--l1-lat 4 --l2-lat 12 --mem-lat 200] <trace>
+// --size/--ways describe L1; --l2-size adds an L2 with the same line size and
+// policy. Latencies are in cycles.
 // Trace: one access per line, "R <hex addr>" or "W <hex addr>"; '#' starts a comment.
 #include <cstdio>
 #include <cstdlib>
@@ -9,7 +12,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "cache.hpp"
+#include "hierarchy.hpp"
 
 static uint64_t parse_size(const char *s) {
   char *end = nullptr;
@@ -28,21 +31,34 @@ static Policy parse_policy(const char *s) {
 }
 
 int main(int argc, char **argv) {
-  CacheConfig config{32 << 10, 8, 64};
+  CacheConfig l1{32 << 10, 8, 64};
+  CacheConfig l2{0, 8, 64};  // size 0: no L2
+  uint32_t l1_latency = 4, l2_latency = 12, memory_latency = 200;
   const char *path = nullptr;
   try {
     for (int i = 1; i < argc; ++i) {
       bool has_value = i + 1 < argc;
-      if (!strcmp(argv[i], "--size") && has_value) config.size_bytes = parse_size(argv[++i]);
-      else if (!strcmp(argv[i], "--ways") && has_value) config.ways = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--line") && has_value) config.line_bytes = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--policy") && has_value) config.policy = parse_policy(argv[++i]);
+      if (!strcmp(argv[i], "--size") && has_value) l1.size_bytes = parse_size(argv[++i]);
+      else if (!strcmp(argv[i], "--ways") && has_value) l1.ways = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--line") && has_value) l1.line_bytes = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--policy") && has_value) l1.policy = parse_policy(argv[++i]);
+      else if (!strcmp(argv[i], "--l2-size") && has_value) l2.size_bytes = parse_size(argv[++i]);
+      else if (!strcmp(argv[i], "--l2-ways") && has_value) l2.ways = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--l1-lat") && has_value) l1_latency = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--l2-lat") && has_value) l2_latency = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--mem-lat") && has_value) memory_latency = uint32_t(parse_size(argv[++i]));
       else if (argv[i][0] != '-' && !path) path = argv[i];
       else throw std::invalid_argument(std::string("bad argument: ") + argv[i]);
     }
     if (!path) throw std::invalid_argument("missing trace file");
 
-    Cache cache(config);
+    std::vector<Hierarchy::Level> levels{{l1, l1_latency}};
+    if (l2.size_bytes) {
+      l2.line_bytes = l1.line_bytes;
+      l2.policy = l1.policy;
+      levels.push_back({l2, l2_latency});
+    }
+    Hierarchy hierarchy(levels, memory_latency);
     std::ifstream in(path);
     if (!in) throw std::invalid_argument(std::string("cannot open ") + path);
     std::string line;
@@ -52,14 +68,18 @@ int main(int argc, char **argv) {
       if (!(fields >> op)) continue;
       if (!(fields >> addr) || (op != "R" && op != "W"))
         throw std::invalid_argument(std::string(path) + ":" + std::to_string(n) + ": bad access");
-      cache.access(std::stoull(addr, nullptr, 16), op == "W");
+      hierarchy.access(std::stoull(addr, nullptr, 16), op == "W");
     }
 
-    const CacheStats &s = cache.stats();
-    printf("accesses    %llu\n", (unsigned long long)s.accesses());
-    printf("misses      %llu\n", (unsigned long long)s.misses());
-    printf("miss rate   %.2f%%\n", s.accesses() ? 100.0 * s.misses() / s.accesses() : 0.0);
-    printf("writebacks  %llu\n", (unsigned long long)s.writebacks);
+    // An L2 access is an L1 miss (read) or an L1 writeback (write).
+    printf("level    accesses      misses  miss rate  writebacks\n");
+    for (size_t i = 0; i < hierarchy.levels(); ++i) {
+      const CacheStats &s = hierarchy.stats(i);
+      printf("L%zu   %11llu %11llu %9.2f%% %11llu\n", i + 1, (unsigned long long)s.accesses(),
+             (unsigned long long)s.misses(), s.accesses() ? 100.0 * s.misses() / s.accesses() : 0.0,
+             (unsigned long long)s.writebacks);
+    }
+    printf("AMAT     %.2f cycles\n", hierarchy.amat());
   } catch (const std::exception &e) {
     fprintf(stderr, "cachesim: %s\n", e.what());
     return 2;

@@ -25,7 +25,7 @@ Cache::Cache(const CacheConfig &config) : policy_(config.policy), ways_(config.w
   lines_.resize(sets * config.ways);
 }
 
-bool Cache::access(uint64_t addr, bool is_write) {
+AccessResult Cache::access(uint64_t addr, bool is_write) {
   ++clock_;
   is_write ? ++stats_.writes : ++stats_.reads;
   uint64_t block = addr >> offset_bits_;
@@ -38,15 +38,20 @@ bool Cache::access(uint64_t addr, bool is_write) {
       line->last_use = clock_;
       line->rrpv = 0;  // hit priority: predict a near re-reference
       line->dirty |= is_write;
-      return true;
+      return {true};
     }
   }
 
   is_write ? ++stats_.write_misses : ++stats_.read_misses;
   Line *victim = choose_victim(first);
-  if (victim->valid && victim->dirty) ++stats_.writebacks;
+  AccessResult result;
+  if (victim->valid && victim->dirty) {
+    ++stats_.writebacks;
+    result.writeback = true;
+    result.writeback_addr = ((victim->tag << index_bits_) | set) << offset_bits_;
+  }
   *victim = Line{tag, clock_, insertion_rrpv(), true, is_write};
-  return false;
+  return result;
 }
 
 Cache::Line *Cache::choose_victim(Line *set) {

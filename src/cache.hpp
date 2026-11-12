@@ -26,6 +26,12 @@ struct CacheStats {
   uint64_t misses() const { return read_misses + write_misses; }
 };
 
+struct AccessResult {
+  bool hit = false;
+  bool writeback = false;       // the fill evicted a dirty line...
+  uint64_t writeback_addr = 0;  // ...whose first byte is here
+};
+
 // Set-associative, write-back, write-allocate cache.
 // Throws std::invalid_argument unless size, ways and line size are powers of
 // two and the cache holds at least one set.
@@ -33,8 +39,7 @@ class Cache {
  public:
   explicit Cache(const CacheConfig &config);
 
-  // Returns true on a hit.
-  bool access(uint64_t addr, bool is_write);
+  AccessResult access(uint64_t addr, bool is_write);
   const CacheStats &stats() const { return stats_; }
 
  private:

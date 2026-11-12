@@ -2,7 +2,7 @@
 
 A trace-driven cache and memory-hierarchy simulator in C++17 for comparing replacement policies, prefetchers and multi-level hierarchies on real and synthetic memory traces.
 
-The cache is set-associative, write-back and write-allocate, with LRU, SRRIP or BRRIP replacement ([docs/rrip.md](docs/rrip.md)). Next come a stride prefetcher, an L1/L2 hierarchy with average memory access time, and real program traces.
+The cache is set-associative, write-back and write-allocate, with LRU, SRRIP or BRRIP replacement ([docs/rrip.md](docs/rrip.md)). An optional L2 and per-level latencies give average memory access time ([docs/hierarchy.md](docs/hierarchy.md)). Next come a stride prefetcher and real program traces.
 
 ```sh
 make check

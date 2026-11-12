@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "../src/cache.hpp"
+#include "../src/hierarchy.hpp"
 
 static int failures = 0;
 #define EXPECT(cond)                                                \
@@ -15,35 +16,35 @@ static int failures = 0;
 
 static void same_line_hits() {
   Cache c({1024, 2, 64});
-  EXPECT(!c.access(0x100, false));
-  EXPECT(c.access(0x100, false));
-  EXPECT(c.access(0x13f, false));  // last byte of the same line
-  EXPECT(!c.access(0x140, false));
+  EXPECT(!c.access(0x100, false).hit);
+  EXPECT(c.access(0x100, false).hit);
+  EXPECT(c.access(0x13f, false).hit);  // last byte of the same line
+  EXPECT(!c.access(0x140, false).hit);
 }
 
 static void direct_mapped_conflict() {
   Cache c({256, 1, 64});  // 4 sets: 0x000 and 0x100 share set 0
-  EXPECT(!c.access(0x000, false));
-  EXPECT(!c.access(0x100, false));
-  EXPECT(!c.access(0x000, false));
+  EXPECT(!c.access(0x000, false).hit);
+  EXPECT(!c.access(0x100, false).hit);
+  EXPECT(!c.access(0x000, false).hit);
   EXPECT(c.stats().misses() == 3);
 }
 
 static void lru_eviction() {
   Cache c({128, 2, 64});  // one set, two ways
-  EXPECT(!c.access(0x000, false));  // A
-  EXPECT(!c.access(0x040, false));  // B
-  EXPECT(c.access(0x000, false));   // A is now most recent
-  EXPECT(!c.access(0x080, false));  // C evicts B
-  EXPECT(c.access(0x000, false));
-  EXPECT(!c.access(0x040, false));
+  EXPECT(!c.access(0x000, false).hit);  // A
+  EXPECT(!c.access(0x040, false).hit);  // B
+  EXPECT(c.access(0x000, false).hit);   // A is now most recent
+  EXPECT(!c.access(0x080, false).hit);  // C evicts B
+  EXPECT(c.access(0x000, false).hit);
+  EXPECT(!c.access(0x040, false).hit);
 }
 
 static void dirty_writeback() {
   Cache c({64, 1, 64});  // one line
-  EXPECT(!c.access(0x000, true));
-  EXPECT(!c.access(0x040, false));  // evicts the dirty line
-  EXPECT(!c.access(0x000, false));  // evicts a clean line
+  EXPECT(!c.access(0x000, true).hit);
+  EXPECT(!c.access(0x040, false).hit);  // evicts the dirty line
+  EXPECT(!c.access(0x000, false).hit);  // evicts a clean line
   EXPECT(c.stats().writebacks == 1);
   EXPECT(c.stats().writes == 1 && c.stats().write_misses == 1);
   EXPECT(c.stats().reads == 2 && c.stats().read_misses == 2);
@@ -85,6 +86,24 @@ static void brrip_resists_thrashing() {
   EXPECT(brrip.stats().misses() == 21);
 }
 
+// L1: one line. L2: one set, two ways. Latencies 1, 10, memory 100.
+//   W A: L1 miss, L2 miss       1 + 10 + 100 = 111
+//   R B: L1 miss, L2 miss       111; L1 evicts dirty A, written into L2 (a hit)
+//   R A: L1 miss, L2 hit        1 + 10 = 11
+//   R A: L1 hit                 1
+// AMAT = 234 / 4 = 58.5 cycles.
+static void two_level_amat() {
+  Hierarchy h({{{64, 1, 64}, 1}, {{128, 2, 64}, 10}}, 100);
+  EXPECT(h.access(0x000, true) == 111);
+  EXPECT(h.access(0x040, false) == 111);
+  EXPECT(h.access(0x000, false) == 11);
+  EXPECT(h.access(0x000, false) == 1);
+  EXPECT(h.amat() == 58.5);
+  EXPECT(h.stats(0).writebacks == 1);
+  EXPECT(h.stats(1).reads == 3 && h.stats(1).read_misses == 2);
+  EXPECT(h.stats(1).writes == 1 && h.stats(1).write_misses == 0);
+}
+
 static void rejects_bad_config() {
   bool threw = false;
   try {
@@ -102,6 +121,7 @@ int main() {
   dirty_writeback();
   srrip_keeps_reused_line_through_scan();
   brrip_resists_thrashing();
+  two_level_amat();
   rejects_bad_config();
   if (failures) return 1;
   puts("PASS: cache-sim");
