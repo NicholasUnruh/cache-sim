@@ -20,7 +20,13 @@ W 0025747c
 """
 
 tool = pathlib.Path(__file__).resolve().parent.parent / "tools" / "lackey2trace.py"
-out = subprocess.run([sys.executable, str(tool)], input=LACKEY, capture_output=True, text=True, check=True).stdout
+out = subprocess.run(
+    [sys.executable, str(tool)],
+    input=LACKEY,
+    capture_output=True,
+    text=True,
+    check=True,
+).stdout
 if out != EXPECTED:
     sys.exit(f"FAILED lackey2trace:\n{out}")
 print("PASS: lackey2trace")

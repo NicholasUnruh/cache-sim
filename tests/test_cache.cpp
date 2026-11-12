@@ -6,12 +6,12 @@
 #include "../src/hierarchy.hpp"
 
 static int failures = 0;
-#define EXPECT(cond)                                                \
-  do {                                                              \
-    if (!(cond)) {                                                  \
+#define EXPECT(cond)                                                    \
+  do {                                                                  \
+    if (!(cond)) {                                                      \
       fprintf(stderr, "%s:%d: FAILED %s\n", __FILE__, __LINE__, #cond); \
-      ++failures;                                                   \
-    }                                                               \
+      ++failures;                                                       \
+    }                                                                   \
   } while (0)
 
 static void same_line_hits() {
@@ -31,7 +31,7 @@ static void direct_mapped_conflict() {
 }
 
 static void lru_eviction() {
-  Cache c({128, 2, 64});  // one set, two ways
+  Cache c({128, 2, 64});                // one set, two ways
   EXPECT(!c.access(0x000, false).hit);  // A
   EXPECT(!c.access(0x040, false).hit);  // B
   EXPECT(c.access(0x000, false).hit);   // A is now most recent
