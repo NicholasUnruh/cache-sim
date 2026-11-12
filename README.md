@@ -52,7 +52,8 @@ Trace format: one access per line, `R <hex address>` or `W <hex address>`; `#` s
 | [L1/L2 hierarchy and AMAT](docs/hierarchy.md) | Miss rates and AMAT with and without an L2 |
 | [Stride prefetcher](docs/prefetch.md) | Accuracy, coverage and lateness by trace and degree |
 | [Real program traces](docs/traces.md) | gzip, bzip2, xz, sort, grep and Python under every policy |
-| [Validation against RTL](docs/rtl-validation.md) | LRU L1 matches a SystemVerilog data cache on all 52,528 accesses of 287 runs, event by event |
+| [Validation against RTL](docs/rtl-validation.md) | LRU L1 matches a SystemVerilog data cache event by event: 60,032 accesses in 328 runs, plus 55.7 M on Embench |
+| [Choosing the RTL cache](docs/rtl-design-space.md) | A sweep on the core's Embench traces picks 8 KB 2-way 64 B; RTL confirms the misses exactly |
 | [Figures](docs/figures.md) | Per-access set view and size × associativity heatmap, with the scripts that draw them |
 
 Every number comes from a `cachesim` run. `make check` runs the unit tests (hand-checked hit, miss, writeback, AMAT and prefetch sequences for every policy) and a smoke run that must report a 100.00% LRU miss rate.
