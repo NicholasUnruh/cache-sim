@@ -17,6 +17,7 @@ build/test_cache: tests/test_cache.cpp $(LIB)
 
 test: build/test_cache
 	./build/test_cache
+	python3 tests/test_lackey2trace.py
 
 # Two sequential passes over twice the cache size: LRU misses every access.
 smoke: build/cachesim
