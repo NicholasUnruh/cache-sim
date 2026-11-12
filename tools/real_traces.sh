@@ -2,7 +2,7 @@
 # Capture data-access traces of real programs with Valgrind Lackey, then run
 # cachesim on each. Needs valgrind. Run from the repo root:
 #   tools/real_traces.sh      # traces in build/traces, Markdown table on stdout
-# Traces include program start-up (loader, libc): about 2.6 M accesses.
+# Traces include program start-up (loader, libc). Notes: docs/traces.md.
 set -euo pipefail
 
 T=build/traces
