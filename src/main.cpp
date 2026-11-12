@@ -1,10 +1,4 @@
-// cachesim [--size 32K --ways 8 --line 64 --policy lru|srrip|brrip]
-//          [--l2-size 256K --l2-ways 8] [--l1-lat 4 --l2-lat 12 --mem-lat 200]
-//          [--prefetch <degree>] <trace>
-// --size/--ways describe L1; --l2-size adds an L2 with the same line size and
-// policy. Latencies are in cycles. --prefetch adds a stride prefetcher at the
-// last level that fetches <degree> blocks ahead.
-// Trace: one access per line, "R <hex addr>" or "W <hex addr>"; '#' starts a comment.
+// cachesim: trace-driven cache and memory-hierarchy simulator. Usage text below.
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -15,6 +9,21 @@
 #include <string>
 
 #include "hierarchy.hpp"
+
+static const char kUsage[] =
+    "usage: cachesim [options] <trace>\n"
+    "  --size 32K          L1 size (K or M suffix)\n"
+    "  --ways 8            L1 associativity\n"
+    "  --line 64           line size in bytes, shared by every level\n"
+    "  --policy lru        replacement policy: lru, srrip or brrip (every level)\n"
+    "  --l2-size 256K      add an L2 of this size (default: no L2)\n"
+    "  --l2-ways 8         L2 associativity\n"
+    "  --l1-lat 4          L1 hit latency, cycles\n"
+    "  --l2-lat 12         L2 hit latency, cycles\n"
+    "  --mem-lat 200       memory latency, cycles\n"
+    "  --prefetch <deg>    stride prefetcher at the last level, <deg> blocks ahead\n"
+    "  -h, --help          print this help\n"
+    "trace: one access per line, \"R <hex addr>\" or \"W <hex addr>\"; '#' starts a comment\n";
 
 static uint64_t parse_size(const char *s) {
   char *end = nullptr;
@@ -40,7 +49,10 @@ int main(int argc, char **argv) {
   try {
     for (int i = 1; i < argc; ++i) {
       bool has_value = i + 1 < argc;
-      if (!strcmp(argv[i], "--size") && has_value)
+      if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+        fputs(kUsage, stdout);
+        return 0;
+      } else if (!strcmp(argv[i], "--size") && has_value)
         l1.size_bytes = parse_size(argv[++i]);
       else if (!strcmp(argv[i], "--ways") && has_value)
         l1.ways = uint32_t(parse_size(argv[++i]));
@@ -103,7 +115,7 @@ int main(int argc, char **argv) {
     }
     printf("AMAT     %.2f cycles\n", hierarchy.amat());
   } catch (const std::exception &e) {
-    fprintf(stderr, "cachesim: %s\n", e.what());
+    fprintf(stderr, "cachesim: %s (see --help)\n", e.what());
     return 2;
   }
   return 0;
