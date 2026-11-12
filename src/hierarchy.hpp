@@ -46,6 +46,7 @@ class Hierarchy {
   uint64_t access(uint64_t addr, bool is_write);
 
   const CacheStats &stats(size_t level) const { return caches_[level].stats(); }
+  const Cache &cache(size_t level) const { return caches_[level]; }
   size_t levels() const { return caches_.size(); }
   uint64_t accesses() const { return accesses_; }
   double amat() const { return accesses_ ? double(cycles_) / accesses_ : 0.0; }

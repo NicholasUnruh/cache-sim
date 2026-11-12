@@ -68,6 +68,14 @@ bool Cache::prefetch(uint64_t addr, uint64_t ready_at) {
   return true;
 }
 
+std::vector<int64_t> Cache::ways_of(uint64_t addr) const {
+  std::vector<int64_t> tags;
+  const Line *first = &lines_[set_of(addr) * ways_];
+  for (const Line *line = first; line != first + ways_; ++line)
+    tags.push_back(line->valid ? int64_t(line->tag) : -1);
+  return tags;
+}
+
 Cache::Line *Cache::find(uint64_t set, uint64_t tag) {
   Line *first = &lines_[set * ways_];
   for (Line *line = first; line != first + ways_; ++line)

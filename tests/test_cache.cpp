@@ -40,6 +40,17 @@ static void lru_eviction() {
   EXPECT(!c.access(0x040, false).hit);
 }
 
+// 4 sets, two ways: 0x000, 0x100, 0x200 all map to set 0 with tags 0, 1, 2.
+static void ways_of_reports_set_contents() {
+  Cache c({512, 2, 64});
+  EXPECT(c.set_of(0x240) == 1 && c.tag_of(0x240) == 2);
+  EXPECT((c.ways_of(0x000) == std::vector<int64_t>{-1, -1}));
+  c.access(0x000, false);
+  c.access(0x100, false);
+  c.access(0x200, false);  // evicts tag 0 from way 0
+  EXPECT((c.ways_of(0x000) == std::vector<int64_t>{2, 1}));
+}
+
 static void dirty_writeback() {
   Cache c({64, 1, 64});  // one line
   EXPECT(!c.access(0x000, true).hit);
@@ -136,6 +147,7 @@ int main() {
   same_line_hits();
   direct_mapped_conflict();
   lru_eviction();
+  ways_of_reports_set_contents();
   dirty_writeback();
   srrip_keeps_reused_line_through_scan();
   brrip_resists_thrashing();

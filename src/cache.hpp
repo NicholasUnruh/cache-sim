@@ -47,6 +47,13 @@ class Cache {
   // line is already present. A dirty victim counts as a writeback.
   bool prefetch(uint64_t addr, uint64_t ready_at);
   const CacheStats &stats() const { return stats_; }
+  // For event dumps: addr's set index, its tag, and the tag held by each way
+  // of that set (-1 for an empty way), in way order.
+  uint64_t set_of(uint64_t addr) const {
+    return (addr >> offset_bits_) & ((uint64_t(1) << index_bits_) - 1);
+  }
+  uint64_t tag_of(uint64_t addr) const { return addr >> (offset_bits_ + index_bits_); }
+  std::vector<int64_t> ways_of(uint64_t addr) const;
 
  private:
   struct Line {
