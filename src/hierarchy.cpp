@@ -1,7 +1,10 @@
 #include "hierarchy.hpp"
 
-Hierarchy::Hierarchy(const std::vector<Level> &levels, uint32_t memory_latency, uint32_t prefetch_degree)
-    : memory_latency_(memory_latency), prefetch_degree_(prefetch_degree), prefetcher_(prefetch_degree) {
+Hierarchy::Hierarchy(const std::vector<Level> &levels, uint32_t memory_latency,
+                     uint32_t prefetch_degree)
+    : memory_latency_(memory_latency),
+      prefetch_degree_(prefetch_degree),
+      prefetcher_(prefetch_degree) {
   for (const Level &level : levels) {
     caches_.emplace_back(level.config);
     latencies_.push_back(level.latency);
@@ -18,8 +21,10 @@ uint64_t Hierarchy::access(uint64_t addr, bool is_write) {
     // Only L1 sees the core's write; lower levels see a line fill (a read).
     AccessResult r = caches_[i].access(addr, i == 0 && is_write);
     if (r.writeback && !last) caches_[i + 1].access(r.writeback_addr, true);
-    if (last) cycles += last_level(addr, r, cycles_ + cycles);
-    else if (r.hit) break;
+    if (last)
+      cycles += last_level(addr, r, cycles_ + cycles);
+    else if (r.hit)
+      break;
   }
   cycles_ += cycles;
   return cycles;

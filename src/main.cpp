@@ -40,18 +40,30 @@ int main(int argc, char **argv) {
   try {
     for (int i = 1; i < argc; ++i) {
       bool has_value = i + 1 < argc;
-      if (!strcmp(argv[i], "--size") && has_value) l1.size_bytes = parse_size(argv[++i]);
-      else if (!strcmp(argv[i], "--ways") && has_value) l1.ways = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--line") && has_value) l1.line_bytes = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--policy") && has_value) l1.policy = parse_policy(argv[++i]);
-      else if (!strcmp(argv[i], "--l2-size") && has_value) l2.size_bytes = parse_size(argv[++i]);
-      else if (!strcmp(argv[i], "--l2-ways") && has_value) l2.ways = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--l1-lat") && has_value) l1_latency = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--l2-lat") && has_value) l2_latency = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--mem-lat") && has_value) memory_latency = uint32_t(parse_size(argv[++i]));
-      else if (!strcmp(argv[i], "--prefetch") && has_value) prefetch_degree = uint32_t(parse_size(argv[++i]));
-      else if (argv[i][0] != '-' && !path) path = argv[i];
-      else throw std::invalid_argument(std::string("bad argument: ") + argv[i]);
+      if (!strcmp(argv[i], "--size") && has_value)
+        l1.size_bytes = parse_size(argv[++i]);
+      else if (!strcmp(argv[i], "--ways") && has_value)
+        l1.ways = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--line") && has_value)
+        l1.line_bytes = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--policy") && has_value)
+        l1.policy = parse_policy(argv[++i]);
+      else if (!strcmp(argv[i], "--l2-size") && has_value)
+        l2.size_bytes = parse_size(argv[++i]);
+      else if (!strcmp(argv[i], "--l2-ways") && has_value)
+        l2.ways = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--l1-lat") && has_value)
+        l1_latency = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--l2-lat") && has_value)
+        l2_latency = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--mem-lat") && has_value)
+        memory_latency = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--prefetch") && has_value)
+        prefetch_degree = uint32_t(parse_size(argv[++i]));
+      else if (argv[i][0] != '-' && !path)
+        path = argv[i];
+      else
+        throw std::invalid_argument(std::string("bad argument: ") + argv[i]);
     }
     if (!path) throw std::invalid_argument("missing trace file");
 

@@ -74,7 +74,9 @@ def matmul(out, n, order, tile):
 
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = p.add_subparsers(dest="kind", required=True)
     s = sub.add_parser("stride")
     s.add_argument("--bytes", type=int, required=True)

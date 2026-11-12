@@ -3,8 +3,9 @@
 #include <algorithm>
 #include <stdexcept>
 
-static constexpr uint8_t kMaxRrpv = 3;      // 2-bit RRPV: 0 = near, 3 = distant re-reference
-static constexpr uint64_t kBrripLong = 32;  // BRRIP inserts every 32nd fill at "long", not "distant"
+static constexpr uint8_t kMaxRrpv = 3;  // 2-bit RRPV: 0 = near, 3 = distant re-reference
+static constexpr uint64_t kBrripLong =
+    32;  // BRRIP inserts every 32nd fill at "long", not "distant"
 
 static bool is_pow2(uint64_t x) { return x != 0 && (x & (x - 1)) == 0; }
 
@@ -15,8 +16,7 @@ static uint32_t log2u(uint64_t x) {
 }
 
 Cache::Cache(const CacheConfig &config) : policy_(config.policy), ways_(config.ways) {
-  if (!is_pow2(config.size_bytes) || !is_pow2(config.ways) ||
-      !is_pow2(config.line_bytes) ||
+  if (!is_pow2(config.size_bytes) || !is_pow2(config.ways) || !is_pow2(config.line_bytes) ||
       config.size_bytes < uint64_t(config.ways) * config.line_bytes)
     throw std::invalid_argument("size, ways and line must be powers of two, size >= ways * line");
   uint64_t sets = config.size_bytes / (uint64_t(config.ways) * config.line_bytes);
@@ -62,7 +62,8 @@ bool Cache::prefetch(uint64_t addr, uint64_t ready_at) {
   uint64_t tag = block >> index_bits_;
   if (find(set, tag)) return false;
   Line *victim = choose_victim(&lines_[set * ways_]);
-  if (victim->valid && victim->dirty) ++stats_.writebacks;  // to memory: prefetching is last-level only
+  if (victim->valid && victim->dirty)
+    ++stats_.writebacks;  // to memory: prefetching is last-level only
   *victim = Line{tag, clock_, insertion_rrpv(), true, false, true, ready_at};
   return true;
 }
@@ -79,12 +80,14 @@ Cache::Line *Cache::choose_victim(Line *set) {
   Line *invalid = std::find_if(set, end, [](const Line &l) { return !l.valid; });
   if (invalid != end) return invalid;
   if (policy_ == Policy::LRU)
-    return std::min_element(set, end, [](const Line &a, const Line &b) { return a.last_use < b.last_use; });
+    return std::min_element(set, end,
+                            [](const Line &a, const Line &b) { return a.last_use < b.last_use; });
 
   // RRIP: evict the first line with RRPV 3. When none has it, the hardware
   // ages every line by one and looks again; adding the oldest line's distance
   // to 3 does all those rounds at once.
-  Line *victim = std::max_element(set, end, [](const Line &a, const Line &b) { return a.rrpv < b.rrpv; });
+  Line *victim =
+      std::max_element(set, end, [](const Line &a, const Line &b) { return a.rrpv < b.rrpv; });
   uint8_t age = kMaxRrpv - victim->rrpv;
   for (Line *line = set; line != end; ++line) line->rrpv += age;
   return victim;

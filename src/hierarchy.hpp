@@ -39,7 +39,8 @@ class Hierarchy {
   };
 
   // prefetch_degree 0 turns the prefetcher off.
-  Hierarchy(const std::vector<Level> &levels, uint32_t memory_latency, uint32_t prefetch_degree = 0);
+  Hierarchy(const std::vector<Level> &levels, uint32_t memory_latency,
+            uint32_t prefetch_degree = 0);
 
   // Returns the cycles this access took.
   uint64_t access(uint64_t addr, bool is_write);
