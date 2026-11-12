@@ -22,7 +22,8 @@ static const char kUsage[] =
     "  --l2-lat 12         L2 hit latency, cycles\n"
     "  --mem-lat 200       memory latency, cycles\n"
     "  --prefetch <deg>    stride prefetcher at the last level, <deg> blocks ahead\n"
-    "  --events <file>     per access: L1 set, tag, hit/miss, evicted tag, set's tags\n"
+    "  --events <file>     per access: L1 set, tag, hit/miss, evicted tag (* if dirty),\n"
+    "                      set's tags\n"
     "  -h, --help          print this help\n"
     "trace: one access per line, \"R <hex addr>\" or \"W <hex addr>\"; '#' starts a comment\n";
 
@@ -96,7 +97,8 @@ int main(int argc, char **argv) {
     if (events_path) {
       events.open(events_path);
       if (!events) throw std::invalid_argument(std::string("cannot write ") + events_path);
-      events << "# op addr set tag hit|miss evicted-tag way-tags... (hex; - = none)\n" << std::hex;
+      events << "# op addr set tag hit|miss evicted-tag[*=written back] way-tags... (hex; - = none)\n"
+             << std::hex;
     }
     std::string line;
     for (uint64_t n = 1; std::getline(in, line); ++n) {
@@ -113,6 +115,7 @@ int main(int argc, char **argv) {
       const Cache &l1_cache = hierarchy.cache(0);
       std::vector<int64_t> before = l1_cache.ways_of(a);
       uint64_t misses = l1_cache.stats().misses();
+      uint64_t writebacks = l1_cache.stats().writebacks;
       hierarchy.access(a, op == "W");
       std::vector<int64_t> after = l1_cache.ways_of(a);
       events << op << ' ' << a << ' ' << l1_cache.set_of(a) << ' ' << l1_cache.tag_of(a)
@@ -121,6 +124,7 @@ int main(int argc, char **argv) {
       for (size_t w = 0; w < before.size(); ++w)
         if (before[w] >= 0 && before[w] != after[w]) evicted = before[w];
       evicted < 0 ? events << '-' : events << evicted;
+      if (l1_cache.stats().writebacks != writebacks) events << '*';
       for (int64_t tag : after) tag < 0 ? events << " -" : events << ' ' << tag;
       events << '\n';
     }

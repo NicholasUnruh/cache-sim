@@ -81,7 +81,7 @@ with open(events) as f:
                     s,
                     tag,
                     int(hm == "H"),
-                    none_if_dash(ev),
+                    none_if_dash(ev.rstrip("*")),
                     [none_if_dash(w) for w in ways],
                 ]
             )
