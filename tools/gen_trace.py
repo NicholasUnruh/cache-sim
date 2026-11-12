@@ -1,6 +1,8 @@
 """Write synthetic memory traces for cachesim to stdout.
 
 stride:  read `bytes` of memory `passes` times, one access every `stride` bytes.
+scan:    `rounds` times: read a `hot` byte working set `reuse` times, then
+         scan `bytes` of memory that is never touched again.
 random:  `count` reads at uniform random addresses inside `bytes`.
 matmul:  the loads and stores of C = A * B on n x n float matrices, in loop
          order ijk, ikj or tiled (ijk over `tile` x `tile` blocks).
@@ -17,6 +19,17 @@ FLOAT = 4
 def stride(out, size, step, passes):
     for _ in range(passes):
         for addr in range(0, size, step):
+            out.write(f"R {addr:x}\n")
+
+
+def scan(out, hot, reuse, size, rounds):
+    line = 64
+    for r in range(rounds):
+        for _ in range(reuse):
+            for addr in range(0, hot, line):
+                out.write(f"R {addr:x}\n")
+        base = A + r * size  # fresh memory every round, far from the hot set
+        for addr in range(base, base + size, line):
             out.write(f"R {addr:x}\n")
 
 
@@ -67,6 +80,11 @@ def main():
     s.add_argument("--bytes", type=int, required=True)
     s.add_argument("--stride", type=int, default=64)
     s.add_argument("--passes", type=int, default=2)
+    sc = sub.add_parser("scan")
+    sc.add_argument("--hot", type=int, required=True)
+    sc.add_argument("--reuse", type=int, default=2)
+    sc.add_argument("--bytes", type=int, required=True)
+    sc.add_argument("--rounds", type=int, default=20)
     r = sub.add_parser("random")
     r.add_argument("--bytes", type=int, required=True)
     r.add_argument("--count", type=int, default=100_000)
@@ -79,6 +97,8 @@ def main():
 
     if args.kind == "stride":
         stride(sys.stdout, args.bytes, args.stride, args.passes)
+    elif args.kind == "scan":
+        scan(sys.stdout, args.hot, args.reuse, args.bytes, args.rounds)
     elif args.kind == "random":
         rand(sys.stdout, args.bytes, args.count, args.seed)
     else:

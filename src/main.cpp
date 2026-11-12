@@ -1,4 +1,4 @@
-// cachesim --size 32K --ways 8 --line 64 <trace>
+// cachesim --size 32K --ways 8 --line 64 --policy lru|srrip|brrip <trace>
 // Trace: one access per line, "R <hex addr>" or "W <hex addr>"; '#' starts a comment.
 #include <cstdio>
 #include <cstdlib>
@@ -20,6 +20,13 @@ static uint64_t parse_size(const char *s) {
   return n;
 }
 
+static Policy parse_policy(const char *s) {
+  if (!strcmp(s, "lru")) return Policy::LRU;
+  if (!strcmp(s, "srrip")) return Policy::SRRIP;
+  if (!strcmp(s, "brrip")) return Policy::BRRIP;
+  throw std::invalid_argument(std::string("bad policy (lru, srrip, brrip): ") + s);
+}
+
 int main(int argc, char **argv) {
   CacheConfig config{32 << 10, 8, 64};
   const char *path = nullptr;
@@ -29,6 +36,7 @@ int main(int argc, char **argv) {
       if (!strcmp(argv[i], "--size") && has_value) config.size_bytes = parse_size(argv[++i]);
       else if (!strcmp(argv[i], "--ways") && has_value) config.ways = uint32_t(parse_size(argv[++i]));
       else if (!strcmp(argv[i], "--line") && has_value) config.line_bytes = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--policy") && has_value) config.policy = parse_policy(argv[++i]);
       else if (argv[i][0] != '-' && !path) path = argv[i];
       else throw std::invalid_argument(std::string("bad argument: ") + argv[i]);
     }
