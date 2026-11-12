@@ -2,19 +2,19 @@
 
 A trace-driven cache and memory-hierarchy simulator in C++17 for comparing replacement policies, prefetchers and multi-level hierarchies on real and synthetic memory traces.
 
-The baseline is a set-associative, write-back, write-allocate cache with true LRU. Next come RRIP replacement, a stride prefetcher, an L1/L2 hierarchy with average memory access time, and real program traces.
+The cache is set-associative, write-back and write-allocate, with LRU, SRRIP or BRRIP replacement ([docs/rrip.md](docs/rrip.md)). An optional L2 and per-level latencies give average memory access time ([docs/hierarchy.md](docs/hierarchy.md)). A stride prefetcher reports accuracy, coverage and lateness ([docs/prefetch.md](docs/prefetch.md)). Real program traces come from Valgrind Lackey ([docs/traces.md](docs/traces.md)).
 
 ```sh
 make check
 python3 tools/gen_trace.py matmul --n 64 --order ijk > build/ijk.trace
-./build/cachesim --size 16K --ways 4 --line 64 build/ijk.trace
+./build/cachesim --size 16K --ways 4 --line 64 --policy srrip build/ijk.trace
 ```
 
 Trace format: one access per line, `R <hex address>` or `W <hex address>`.
 
-| Workload (16 KB, 4-way, 64 B lines) | LRU miss rate |
-|---|---:|
-| 64×64 matmul, `ijk` | 4.90% |
-| 64×64 matmul, `ikj` | 0.35% |
-| 64×64 matmul, 16×16 tiles | 0.32% |
-| Two passes over 2× cache size | 100.00% |
+| Miss rate (16 KB, 4-way, 64 B lines) | LRU | SRRIP | BRRIP |
+|---|---:|---:|---:|
+| 64×64 matmul, `ijk` | 4.90% | 4.34% | 6.83% |
+| 64×64 matmul, 16×16 tiles | 0.32% | 0.32% | 0.33% |
+| Two passes over 2× cache size | 100.00% | 100.00% | 81.45% |
+| 8 KB hot set + 16 KB scans | 75.00% | 51.25% | 51.25% |
