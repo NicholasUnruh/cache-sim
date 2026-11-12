@@ -22,6 +22,7 @@ static const char kUsage[] =
     "  --l2-lat 12         L2 hit latency, cycles\n"
     "  --mem-lat 200       memory latency, cycles\n"
     "  --prefetch <deg>    stride prefetcher at the last level, <deg> blocks ahead\n"
+    "  --events <file>     per access: L1 set, tag, hit/miss, evicted tag, set's tags\n"
     "  -h, --help          print this help\n"
     "trace: one access per line, \"R <hex addr>\" or \"W <hex addr>\"; '#' starts a comment\n";
 
@@ -46,6 +47,7 @@ int main(int argc, char **argv) {
   CacheConfig l2{0, 8, 64};  // size 0: no L2
   uint32_t l1_latency = 4, l2_latency = 12, memory_latency = 200, prefetch_degree = 0;
   const char *path = nullptr;
+  const char *events_path = nullptr;
   try {
     for (int i = 1; i < argc; ++i) {
       bool has_value = i + 1 < argc;
@@ -72,6 +74,8 @@ int main(int argc, char **argv) {
         memory_latency = uint32_t(parse_size(argv[++i]));
       else if (!strcmp(argv[i], "--prefetch") && has_value)
         prefetch_degree = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--events") && has_value)
+        events_path = argv[++i];
       else if (argv[i][0] != '-' && !path)
         path = argv[i];
       else
@@ -88,6 +92,12 @@ int main(int argc, char **argv) {
     Hierarchy hierarchy(levels, memory_latency, prefetch_degree);
     std::ifstream in(path);
     if (!in) throw std::invalid_argument(std::string("cannot open ") + path);
+    std::ofstream events;
+    if (events_path) {
+      events.open(events_path);
+      if (!events) throw std::invalid_argument(std::string("cannot write ") + events_path);
+      events << "# op addr set tag hit|miss evicted-tag way-tags... (hex; - = none)\n" << std::hex;
+    }
     std::string line;
     for (uint64_t n = 1; std::getline(in, line); ++n) {
       std::istringstream fields(line.substr(0, line.find('#')));
@@ -95,7 +105,24 @@ int main(int argc, char **argv) {
       if (!(fields >> op)) continue;
       if (!(fields >> addr) || (op != "R" && op != "W"))
         throw std::invalid_argument(std::string(path) + ":" + std::to_string(n) + ": bad access");
-      hierarchy.access(std::stoull(addr, nullptr, 16), op == "W");
+      uint64_t a = std::stoull(addr, nullptr, 16);
+      if (!events_path) {
+        hierarchy.access(a, op == "W");
+        continue;
+      }
+      const Cache &l1_cache = hierarchy.cache(0);
+      std::vector<int64_t> before = l1_cache.ways_of(a);
+      uint64_t misses = l1_cache.stats().misses();
+      hierarchy.access(a, op == "W");
+      std::vector<int64_t> after = l1_cache.ways_of(a);
+      events << op << ' ' << a << ' ' << l1_cache.set_of(a) << ' ' << l1_cache.tag_of(a)
+             << (l1_cache.stats().misses() == misses ? " H " : " M ");
+      int64_t evicted = -1;
+      for (size_t w = 0; w < before.size(); ++w)
+        if (before[w] >= 0 && before[w] != after[w]) evicted = before[w];
+      evicted < 0 ? events << '-' : events << evicted;
+      for (int64_t tag : after) tag < 0 ? events << " -" : events << ' ' << tag;
+      events << '\n';
     }
 
     // An L2 access is an L1 miss (read) or an L1 writeback (write).

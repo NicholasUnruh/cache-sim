@@ -11,6 +11,10 @@ A trace-driven cache and memory-hierarchy simulator in C++17 that compares repla
 
 On six real programs traced with Valgrind, SRRIP stays within 0.05 cycles of LRU, BRRIP loses on every program, and a degree-4 stride prefetcher cuts grep's AMAT from 9.09 to 6.74 cycles ([docs/traces.md](docs/traces.md)).
 
+![L1 miss rate over size and associativity for matmul ijk and tiled](docs/img/heatmap.png)
+
+128×128 matmul, LRU: `ijk` misses half its accesses until the L1 holds a whole matrix, and more ways can raise the miss rate ([docs/figures.md](docs/figures.md)).
+
 ## Why it matters
 
 Replacement, prefetching and hierarchy depth decide how often a core waits on DRAM. A small, readable simulator makes each policy's trade-off measurable on identical traces and explains why a policy wins on one access pattern and loses on another.
@@ -22,6 +26,7 @@ make check                                    # unit tests + smoke run (LRU must
 python3 tools/gen_trace.py matmul --n 64 --order ijk > build/ijk.trace
 ./build/cachesim --size 16K --ways 4 --line 64 --policy srrip build/ijk.trace
 ./build/cachesim --l2-size 256K --l2-ways 8 --prefetch 4 build/ijk.trace   # L1+L2, prefetcher
+./build/cachesim --size 4K --ways 4 --events build/ijk.events build/ijk.trace   # per-access set dump
 tools/real_traces.sh                          # real-program table; needs Valgrind
 ```
 
@@ -35,7 +40,7 @@ Trace format: one access per line, `R <hex address>` or `W <hex address>`; `#` s
 | `src/hierarchy.{hpp,cpp}` | L1/L2 hierarchy with latencies and AMAT |
 | `src/prefetcher.hpp` | Global stride prefetcher |
 | `src/main.cpp` | `cachesim` command-line interface |
-| `tools/` | Synthetic trace generator, Valgrind Lackey converter, real-trace script |
+| `tools/` | Synthetic trace generator, Valgrind Lackey converter, real-trace script, figure scripts |
 | `tests/` | Hand-checked unit tests |
 | `docs/` | Per-feature notes with measured tables |
 
@@ -47,6 +52,7 @@ Trace format: one access per line, `R <hex address>` or `W <hex address>`; `#` s
 | [L1/L2 hierarchy and AMAT](docs/hierarchy.md) | Miss rates and AMAT with and without an L2 |
 | [Stride prefetcher](docs/prefetch.md) | Accuracy, coverage and lateness by trace and degree |
 | [Real program traces](docs/traces.md) | gzip, bzip2, xz, sort, grep and Python under every policy |
+| [Figures](docs/figures.md) | Per-access set view and size × associativity heatmap, with the scripts that draw them |
 
 Every number comes from a `cachesim` run. `make check` runs the unit tests (hand-checked hit, miss, writeback, AMAT and prefetch sequences for every policy) and a smoke run that must report a 100.00% LRU miss rate.
 

@@ -16,6 +16,8 @@ L1 32 KB 8-way, L2 256 KB 8-way, 64 B lines, LRU, latencies 4/12/200. Matmul on 
 | n=256 tiled | 13.83% | 0.81% | 31.66 | 5.91 |
 | `random` 1 MB | 96.89% | 77.52% | 197.78 | 165.84 |
 
+![AMAT with and without an L2 on three traces](img/hierarchy.png)
+
 - **`ijk`**: B is read down a column. A 512 B (n=128) row stride maps every B line to one of 8 L1 sets, 64 lines for a 128-line column, so every B read misses (50%). B fits in L2, which turns a 200-cycle miss into 12: AMAT falls 10×.
 - **n=256 tiled**: with 1 KB rows, the A, B and C tiles (64 lines each) land in 8 to 16 of the 64 L1 sets: conflict misses again, absorbed by L2.
 - **n=128 tiled**: L1 already hits; the L2 misses are the compulsory ones, so its 21% local rate costs little.
