@@ -2,7 +2,7 @@
 
 CXX ?= g++
 CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -Werror
-LIB := src/cache.cpp src/cache.hpp src/hierarchy.cpp src/hierarchy.hpp
+LIB := src/cache.cpp src/cache.hpp src/hierarchy.cpp src/hierarchy.hpp src/prefetcher.hpp
 
 # Run before every commit.
 check: test smoke

@@ -28,6 +28,8 @@ struct CacheStats {
 
 struct AccessResult {
   bool hit = false;
+  bool prefetch_hit = false;    // first demand hit on a prefetched line...
+  uint64_t ready_at = 0;        // ...whose data arrives at this cycle
   bool writeback = false;       // the fill evicted a dirty line...
   uint64_t writeback_addr = 0;  // ...whose first byte is here
 };
@@ -40,6 +42,10 @@ class Cache {
   explicit Cache(const CacheConfig &config);
 
   AccessResult access(uint64_t addr, bool is_write);
+  // Fills the line holding addr without counting an access, marked as
+  // prefetched with data arriving at cycle ready_at. Returns false if the
+  // line is already present. A dirty victim counts as a writeback.
+  bool prefetch(uint64_t addr, uint64_t ready_at);
   const CacheStats &stats() const { return stats_; }
 
  private:
@@ -49,8 +55,11 @@ class Cache {
     uint8_t rrpv = 0;       // SRRIP and BRRIP
     bool valid = false;
     bool dirty = false;
+    bool prefetched = false;  // filled by prefetch, no demand hit yet
+    uint64_t ready_at = 0;    // prefetched data arrives at this cycle
   };
 
+  Line *find(uint64_t set, uint64_t tag);
   Line *choose_victim(Line *set);
   uint8_t insertion_rrpv();
 

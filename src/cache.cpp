@@ -31,20 +31,21 @@ AccessResult Cache::access(uint64_t addr, bool is_write) {
   uint64_t block = addr >> offset_bits_;
   uint64_t set = block & ((uint64_t(1) << index_bits_) - 1);
   uint64_t tag = block >> index_bits_;
-  Line *first = &lines_[set * ways_];
 
-  for (Line *line = first; line != first + ways_; ++line) {
-    if (line->valid && line->tag == tag) {
-      line->last_use = clock_;
-      line->rrpv = 0;  // hit priority: predict a near re-reference
-      line->dirty |= is_write;
-      return {true};
-    }
+  AccessResult result;
+  if (Line *line = find(set, tag)) {
+    line->last_use = clock_;
+    line->rrpv = 0;  // hit priority: predict a near re-reference
+    line->dirty |= is_write;
+    result.hit = true;
+    result.prefetch_hit = line->prefetched;
+    result.ready_at = line->ready_at;
+    line->prefetched = false;
+    return result;
   }
 
   is_write ? ++stats_.write_misses : ++stats_.read_misses;
-  Line *victim = choose_victim(first);
-  AccessResult result;
+  Line *victim = choose_victim(&lines_[set * ways_]);
   if (victim->valid && victim->dirty) {
     ++stats_.writebacks;
     result.writeback = true;
@@ -52,6 +53,25 @@ AccessResult Cache::access(uint64_t addr, bool is_write) {
   }
   *victim = Line{tag, clock_, insertion_rrpv(), true, is_write};
   return result;
+}
+
+bool Cache::prefetch(uint64_t addr, uint64_t ready_at) {
+  ++clock_;
+  uint64_t block = addr >> offset_bits_;
+  uint64_t set = block & ((uint64_t(1) << index_bits_) - 1);
+  uint64_t tag = block >> index_bits_;
+  if (find(set, tag)) return false;
+  Line *victim = choose_victim(&lines_[set * ways_]);
+  if (victim->valid && victim->dirty) ++stats_.writebacks;  // to memory: prefetching is last-level only
+  *victim = Line{tag, clock_, insertion_rrpv(), true, false, true, ready_at};
+  return true;
+}
+
+Cache::Line *Cache::find(uint64_t set, uint64_t tag) {
+  Line *first = &lines_[set * ways_];
+  for (Line *line = first; line != first + ways_; ++line)
+    if (line->valid && line->tag == tag) return line;
+  return nullptr;
 }
 
 Cache::Line *Cache::choose_victim(Line *set) {

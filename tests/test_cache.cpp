@@ -104,6 +104,24 @@ static void two_level_amat() {
   EXPECT(h.stats(1).writes == 1 && h.stats(1).write_misses == 0);
 }
 
+// One level (latency 1, 16 sets, no evictions), memory 100, degree 2.
+// Reads of blocks 0-5; t is the cycle the L1 lookup finishes.
+//   b0 t=1    miss, 101 cycles; no previous block
+//   b1 t=102  miss, 101; stride 1 seen once
+//   b2 t=203  miss, 101; stride 1 confirmed: prefetch b3, b4 (ready 303)
+//   b3 t=304  prefetch hit, on time, 1; prefetch b5 (ready 404), b4 present
+//   b4 t=305  prefetch hit, on time, 1; prefetch b6 (ready 405)
+//   b5 t=306  prefetch hit, waits 98 for b5: late, 99; prefetch b7
+// Issued 5 (b3-b7), useful 3, late 1, demand misses 3.
+static void stride_prefetch() {
+  Hierarchy h({{{4096, 4, 64}, 1}}, 100, 2);
+  const uint64_t expected[] = {101, 101, 101, 1, 1, 99};
+  for (uint64_t b = 0; b < 6; ++b) EXPECT(h.access(b * 64, false) == expected[b]);
+  const PrefetchStats &p = h.prefetch_stats();
+  EXPECT(p.issued == 5 && p.useful == 3 && p.late == 1 && p.demand_misses == 3);
+  EXPECT(p.accuracy() == 0.6 && p.coverage() == 0.5);
+}
+
 static void rejects_bad_config() {
   bool threw = false;
   try {
@@ -122,6 +140,7 @@ int main() {
   srrip_keeps_reused_line_through_scan();
   brrip_resists_thrashing();
   two_level_amat();
+  stride_prefetch();
   rejects_bad_config();
   if (failures) return 1;
   puts("PASS: cache-sim");

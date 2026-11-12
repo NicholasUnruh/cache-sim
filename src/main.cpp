@@ -1,7 +1,9 @@
 // cachesim [--size 32K --ways 8 --line 64 --policy lru|srrip|brrip]
-//          [--l2-size 256K --l2-ways 8] [--l1-lat 4 --l2-lat 12 --mem-lat 200] <trace>
+//          [--l2-size 256K --l2-ways 8] [--l1-lat 4 --l2-lat 12 --mem-lat 200]
+//          [--prefetch <degree>] <trace>
 // --size/--ways describe L1; --l2-size adds an L2 with the same line size and
-// policy. Latencies are in cycles.
+// policy. Latencies are in cycles. --prefetch adds a stride prefetcher at the
+// last level that fetches <degree> blocks ahead.
 // Trace: one access per line, "R <hex addr>" or "W <hex addr>"; '#' starts a comment.
 #include <cstdio>
 #include <cstdlib>
@@ -33,7 +35,7 @@ static Policy parse_policy(const char *s) {
 int main(int argc, char **argv) {
   CacheConfig l1{32 << 10, 8, 64};
   CacheConfig l2{0, 8, 64};  // size 0: no L2
-  uint32_t l1_latency = 4, l2_latency = 12, memory_latency = 200;
+  uint32_t l1_latency = 4, l2_latency = 12, memory_latency = 200, prefetch_degree = 0;
   const char *path = nullptr;
   try {
     for (int i = 1; i < argc; ++i) {
@@ -47,6 +49,7 @@ int main(int argc, char **argv) {
       else if (!strcmp(argv[i], "--l1-lat") && has_value) l1_latency = uint32_t(parse_size(argv[++i]));
       else if (!strcmp(argv[i], "--l2-lat") && has_value) l2_latency = uint32_t(parse_size(argv[++i]));
       else if (!strcmp(argv[i], "--mem-lat") && has_value) memory_latency = uint32_t(parse_size(argv[++i]));
+      else if (!strcmp(argv[i], "--prefetch") && has_value) prefetch_degree = uint32_t(parse_size(argv[++i]));
       else if (argv[i][0] != '-' && !path) path = argv[i];
       else throw std::invalid_argument(std::string("bad argument: ") + argv[i]);
     }
@@ -58,7 +61,7 @@ int main(int argc, char **argv) {
       l2.policy = l1.policy;
       levels.push_back({l2, l2_latency});
     }
-    Hierarchy hierarchy(levels, memory_latency);
+    Hierarchy hierarchy(levels, memory_latency, prefetch_degree);
     std::ifstream in(path);
     if (!in) throw std::invalid_argument(std::string("cannot open ") + path);
     std::string line;
@@ -78,6 +81,13 @@ int main(int argc, char **argv) {
       printf("L%zu   %11llu %11llu %9.2f%% %11llu\n", i + 1, (unsigned long long)s.accesses(),
              (unsigned long long)s.misses(), s.accesses() ? 100.0 * s.misses() / s.accesses() : 0.0,
              (unsigned long long)s.writebacks);
+    }
+    if (prefetch_degree) {
+      const PrefetchStats &p = hierarchy.prefetch_stats();
+      printf("prefetch issued %llu  useful %llu  late %llu\n", (unsigned long long)p.issued,
+             (unsigned long long)p.useful, (unsigned long long)p.late);
+      printf("prefetch accuracy %.2f%%  coverage %.2f%%  lateness %.2f%%\n", 100 * p.accuracy(),
+             100 * p.coverage(), 100 * p.lateness());
     }
     printf("AMAT     %.2f cycles\n", hierarchy.amat());
   } catch (const std::exception &e) {
