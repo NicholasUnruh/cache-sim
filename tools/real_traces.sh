@@ -21,7 +21,7 @@ command_for() {
     bzip2) CMD=(bzip2 -9 -c "$T/text.in") ;;
     xz) CMD=(xz -1 -c "$T/text.in") ;;
     sort) CMD=(sort -n "$T/nums.in") ;;
-    grep) CMD=(grep -cE '[a-z]+_t \*?[a-z_]+\(' "$T/text.in") ;;
+    grep) CMD=(grep -cE '[a-z_]+ \(' "$T/text.in") ;;  # glibc writes "name ("
     python) CMD=(python3 -c 'd = {i * 7919 % 100003: i for i in range(200000)}; print(sum(sorted(d)))') ;;
   esac
 }
