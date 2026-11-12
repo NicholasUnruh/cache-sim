@@ -18,6 +18,8 @@ L1 32 KB, L2 256 KB, both 8-way, 64 B lines, LRU, latencies 4/12/200. `seq64`: 4
 
 AMAT by degree, D = off/1/4/16: `seq64` 216.00/108.00/43.21/16.01; matmul 256 `ijk` 14.14/12.80/12.48/14.17.
 
+![AMAT by prefetch degree on a 4 MB sequential read](img/prefetch.png)
+
 - **`seq64`**: a new line every 16 cycles, so D lines ahead hide 16·D of the 200 cycles. D=16 hides all of it; smaller D is late.
 - **`seq4`**: 64 cycles per line; D=4 is on time.
 - **matmul 128**: L2 rarely misses; the cost left is L1 misses, out of an L2 prefetcher's reach. Tiled streams are 2 lines long: low coverage.

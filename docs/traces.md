@@ -13,6 +13,8 @@ L1 32 KB, L2 256 KB, both 8-way, 64 B lines, latencies 4/12/200. AMAT in cycles.
 | `grep -cE` | 0.18 M | 2.92% | 67.60% | 9.09 | 9.09 | 9.10 | 6.74 |
 | `python3` dict | 145.4 M | 2.67% | 55.99% | 8.56 | 8.51 | 8.67 | 7.38 |
 
+![AMAT by policy on six real programs](img/amat.png)
+
 Prefetch (D=4) coverage: grep 55%, python 29%, gzip 29%, bzip2 9%, xz 7%, sort 4%.
 
 - **gzip**: its hash chains and window miss the 32 KB L1 often but fit in L2 (0.40% misses), so replacement and prefetching hardly matter.

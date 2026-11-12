@@ -16,6 +16,8 @@ Miss rate, 16 KB, 4-way, 64 B lines; 64×64 matmul. `scan H/S`: read H KB twice,
 | `scan 8/16` | 75.00% | 51.25% | 51.25% |
 | `scan 8/32` | 83.33% | 83.33% | 72.51% |
 
+![L1 miss rate by policy on matmul ijk, scan 8/16 and two passes](img/rrip.png)
+
 - **`scan 8/16`**: hot set plus scan overflow the cache. LRU loses the hot set every round; under RRIP hot lines sit at 0 and the scan replaces itself (50% is the floor).
 - **`scan 8/32`**: eight scan lines per set age the hot lines to 3, so SRRIP falls to LRU. BRRIP keeps some: scan lines enter at 3.
 - **2 passes**: LRU and SRRIP evict each line just before reuse. BRRIP keeps 3 of 8 lines per set, so 3/16 of accesses hit.
