@@ -13,7 +13,7 @@ uv run --with matplotlib python tools/plot.py docs/img
 
 ## Set conflicts, access by access
 
-`cachesim --events FILE` writes one line per access with L1's set, tag, hit or miss, the evicted tag and the set's tags after the access. `tools/cache_steps.py` turns a window of those lines into JSON.
+`cachesim --events FILE` writes one line per access with L1's set, tag, hit or miss, the evicted tag (marked `*` when the line was dirty and written back) and the set's tags after the access. `tools/cache_steps.py` turns a window of those lines into JSON.
 
 ![Hits and misses per L1 set for matmul ijk and tiled](img/cache-steps.png)
 
